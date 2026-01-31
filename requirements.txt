@@ -1,0 +1,9 @@
+﻿# Core Computer Vision
+opencv-python>=4.8.0
+numpy>=1.24.0,<2.0.0
+
+# Face Detection & Landmarks - Using MediaPipe (Google's solution)
+mediapipe>=0.10.0
+
+# Utilities
+loguru>=0.7.0
