@@ -1,5 +1,6 @@
 """
 Visualization utilities for drawing bounding boxes and landmarks.
+Includes drowsiness-specific visualizations.
 """
 
 import cv2
@@ -78,21 +79,6 @@ def draw_landmarks(frame, landmarks, connections=None):
     if landmarks is None or len(landmarks) == 0:
         return frame
     
-    # Draw connections first (so they appear behind points)
-    if connections and Config.DRAW_CONNECTIONS:
-        for connection in connections:
-            start_idx, end_idx = connection
-            if start_idx < len(landmarks) and end_idx < len(landmarks):
-                start_point = landmarks[start_idx]
-                end_point = landmarks[end_idx]
-                cv2.line(
-                    frame,
-                    start_point,
-                    end_point,
-                    Config.CONNECTION_COLOR,
-                    Config.CONNECTION_THICKNESS
-                )
-    
     # Draw each landmark point
     for point in landmarks:
         cv2.circle(
@@ -102,6 +88,72 @@ def draw_landmarks(frame, landmarks, connections=None):
             Config.LANDMARK_COLOR,
             Config.LANDMARK_THICKNESS
         )
+    
+    return frame
+
+
+def draw_eye_landmarks(frame, left_eye, right_eye, eyes_closed=False):
+    """
+    Draw eye landmarks with special highlighting.
+    
+    Args:
+        frame (np.ndarray): Input frame
+        left_eye (list): Left eye landmarks
+        right_eye (list): Right eye landmarks
+        eyes_closed (bool): Whether eyes are closed
+    
+    Returns:
+        np.ndarray: Frame with eye landmarks drawn
+    """
+    color = Config.COLOR_DANGER if eyes_closed else Config.EYE_COLOR
+    
+    # Draw left eye
+    if left_eye and len(left_eye) >= 6:
+        # Draw eye contour
+        points = np.array(left_eye, dtype=np.int32)
+        cv2.polylines(frame, [points], True, color, Config.EYE_THICKNESS)
+        
+        # Draw landmarks
+        for point in left_eye:
+            cv2.circle(frame, point, 2, color, -1)
+    
+    # Draw right eye
+    if right_eye and len(right_eye) >= 6:
+        # Draw eye contour
+        points = np.array(right_eye, dtype=np.int32)
+        cv2.polylines(frame, [points], True, color, Config.EYE_THICKNESS)
+        
+        # Draw landmarks
+        for point in right_eye:
+            cv2.circle(frame, point, 2, color, -1)
+    
+    return frame
+
+
+def draw_mouth_landmarks(frame, mouth_landmarks, yawning=False):
+    """
+    Draw mouth landmarks with special highlighting.
+    
+    Args:
+        frame (np.ndarray): Input frame
+        mouth_landmarks (list): Mouth landmarks
+        yawning (bool): Whether person is yawning
+    
+    Returns:
+        np.ndarray: Frame with mouth landmarks drawn
+    """
+    if not mouth_landmarks or len(mouth_landmarks) < 8:
+        return frame
+    
+    color = Config.COLOR_WARNING if yawning else Config.MOUTH_COLOR
+    
+    # Draw mouth contour
+    points = np.array(mouth_landmarks, dtype=np.int32)
+    cv2.polylines(frame, [points], True, color, Config.MOUTH_THICKNESS)
+    
+    # Draw landmarks
+    for point in mouth_landmarks:
+        cv2.circle(frame, point, 2, color, -1)
     
     return frame
 
@@ -128,6 +180,56 @@ def draw_fps(frame, fps_value):
         Config.FPS_COLOR,
         Config.FPS_THICKNESS
     )
+    
+    return frame
+
+
+def draw_dashboard(frame, drowsiness_data):
+    """
+    Draw statistics dashboard.
+    
+    Args:
+        frame (np.ndarray): Input frame
+        drowsiness_data (dict): Drowsiness detection data
+    
+    Returns:
+        np.ndarray: Frame with dashboard drawn
+    """
+    if not Config.SHOW_DASHBOARD:
+        return frame
+    
+    x, y = Config.DASHBOARD_POSITION
+    font = Config.FPS_FONT
+    scale = Config.DASHBOARD_FONT_SCALE
+    spacing = Config.DASHBOARD_LINE_SPACING
+    color = (255, 255, 255)
+    thickness = 1
+    
+    # Statistics
+    stats = [
+        f"Alert: {drowsiness_data['alert_level']}",
+        f"Eye Closures: {drowsiness_data['total_eye_closures']}",
+        f"Yawns: {drowsiness_data['total_yawns']}",
+    ]
+    
+    # Draw semi-transparent background
+    bg_height = len(stats) * spacing + 20
+    bg_width = 250
+    overlay = frame.copy()
+    cv2.rectangle(overlay, (x - 5, y - 20), (x + bg_width, y + bg_height), (0, 0, 0), -1)
+    cv2.addWeighted(overlay, 0.3, frame, 0.7, 0, frame)
+    
+    # Draw text
+    for i, stat in enumerate(stats):
+        cv2.putText(
+            frame,
+            stat,
+            (x, y + i * spacing),
+            font,
+            scale,
+            color,
+            thickness
+        )
     
     return frame
 

@@ -1,8 +1,10 @@
 """
-Main application - Real-Time Face Detection & Landmark Tracking.
+Main application - Drowsiness Detection System.
 
-This is the entry point of the application.
-Uses MediaPipe for fast, accurate face detection with 468 facial landmarks.
+Real-time detection of driver drowsiness using:
+- Eye Aspect Ratio (EAR) for eye closure detection
+- Mouth Aspect Ratio (MAR) for yawn detection
+- Visual and audio alerts
 """
 
 import cv2
@@ -11,24 +13,30 @@ from config.settings import Config
 from camera.video_capture import VideoCapture
 from face_detection.detector import FaceDetector
 from landmarks.landmark_tracker import LandmarkTracker
+from drowsiness.detector import DrowsinessDetector
+from alerts.alert_system import AlertSystem
 from utils.fps_counter import FPSCounter
 from utils.visualization import (
     draw_bounding_box,
-    draw_landmarks,
+    draw_eye_landmarks,
+    draw_mouth_landmarks,
     draw_fps,
+    draw_dashboard,
     draw_no_face_message
 )
 from utils.logger import log
 
 
-class FaceLandmarkApp:
-    """Main application class orchestrating all components."""
+class DrowsinessDetectionApp:
+    """Main application class for drowsiness detection system."""
     
     def __init__(self):
         """Initialize application components."""
         self.camera = VideoCapture()
         self.detector = FaceDetector()
         self.tracker = LandmarkTracker()
+        self.drowsiness_detector = DrowsinessDetector()
+        self.alert_system = AlertSystem()
         self.fps_counter = FPSCounter()
         
         # Create necessary directories
@@ -41,9 +49,10 @@ class FaceLandmarkApp:
         Returns:
             bool: True if all components initialized successfully
         """
-        log.info("=" * 60)
-        log.info("Face Landmark Tracker - MediaPipe Edition")
-        log.info("=" * 60)
+        log.info("=" * 70)
+        log.info("DROWSINESS DETECTION SYSTEM")
+        log.info("Real-time Eye Closure & Yawn Detection")
+        log.info("=" * 70)
         
         # Initialize camera
         if not self.camera.start():
@@ -56,14 +65,24 @@ class FaceLandmarkApp:
             self.camera.release()
             return False
         
-        log.info("All components initialized successfully")
-        log.info("=" * 60)
+        log.info("=" * 70)
+        log.info("DETECTION THRESHOLDS:")
+        log.info(f"  Eye Aspect Ratio (EAR) Threshold: {Config.EAR_THRESHOLD}")
+        log.info(f"  Mouth Aspect Ratio (MAR) Threshold: {Config.MAR_THRESHOLD}")
+        log.info(f"  Eye Closure Frames: {Config.EAR_CONSEC_FRAMES}")
+        log.info(f"  Yawn Frames: {Config.MAR_CONSEC_FRAMES}")
+        log.info("=" * 70)
+        log.info("CONTROLS:")
+        log.info("  Press 'q' to quit")
+        log.info("  Press 's' to save screenshot")
+        log.info("  Press 'r' to reset statistics")
+        log.info("=" * 70)
         
         return True
     
     def process_frame(self, original_frame, processed_frame):
         """
-        Process a single frame: detect faces and draw landmarks.
+        Process a single frame: detect faces, analyze drowsiness, and draw visualizations.
         
         Args:
             original_frame (np.ndarray): Original resolution frame for display
@@ -81,57 +100,79 @@ class FaceLandmarkApp:
         scale_x = w_orig / w_proc
         scale_y = h_orig / h_proc
         
+        # Default drowsiness data (no face detected)
+        drowsiness_data = None
+        
         # If no faces detected
         if len(faces) == 0:
             draw_no_face_message(original_frame)
+            # Use default drowsiness data
+            drowsiness_data = self.drowsiness_detector._get_default_result()
         else:
-            # Process each detected face
-            for face in faces:
-                # Get face information
-                face_info = self.detector.get_face_info(face, w_proc, h_proc)
-                
-                # Scale bounding box to original frame size
-                bbox = face_info['bbox']
-                scaled_bbox = (
-                    int(bbox[0] * scale_x),
-                    int(bbox[1] * scale_y),
-                    int(bbox[2] * scale_x),
-                    int(bbox[3] * scale_y)
-                )
-                
-                # Draw bounding box
-                draw_bounding_box(
-                    original_frame,
-                    scaled_bbox,
-                    face_info['confidence']
-                )
-                
-                # Scale landmarks
-                scaled_landmarks = self.tracker.scale_landmarks(
-                    face_info['landmarks'],
-                    scale_x,
-                    scale_y
-                )
-                
-                # Filter landmarks for cleaner display (show every 5th landmark)
-                # Comment this line to show ALL 468 landmarks
-                display_landmarks = self.tracker.filter_landmarks_for_display(
-                    scaled_landmarks,
-                    step=10
-                )
-                
-                # Draw landmarks
-                # Note: MediaPipe has many connection lines, which can be cluttered
-                # Set Config.DRAW_CONNECTIONS = False in settings.py for cleaner look
-                draw_landmarks(
-                    original_frame,
-                    display_landmarks,
-                    connections=None  # Set to face_info['landmark_connections'] to draw all connections
-                )
-                
-                # Optional: Get landmark statistics (for debugging)
-                # stats = self.tracker.get_landmark_statistics(scaled_landmarks)
-                # log.debug(f"Face center: {stats['center']}, Size: {stats['width']}x{stats['height']}")
+            # Process the first face (driver)
+            face = faces[0]
+            
+            # Get face information
+            face_info = self.detector.get_face_info(face, w_proc, h_proc)
+            
+            # Scale bounding box to original frame size
+            bbox = face_info['bbox']
+            scaled_bbox = (
+                int(bbox[0] * scale_x),
+                int(bbox[1] * scale_y),
+                int(bbox[2] * scale_x),
+                int(bbox[3] * scale_y)
+            )
+            
+            # Draw bounding box
+            draw_bounding_box(
+                original_frame,
+                scaled_bbox,
+                face_info['confidence']
+            )
+            
+            # Scale landmarks to original frame
+            scaled_landmarks = self.tracker.scale_landmarks(
+                face_info['landmarks'],
+                scale_x,
+                scale_y
+            )
+            
+            # DROWSINESS DETECTION
+            drowsiness_data = self.drowsiness_detector.detect_drowsiness(scaled_landmarks)
+            
+            # Draw eye landmarks
+            left_eye = [(int(x * scale_x), int(y * scale_y)) 
+                       for x, y in drowsiness_data['left_eye_landmarks']]
+            right_eye = [(int(x * scale_x), int(y * scale_y)) 
+                        for x, y in drowsiness_data['right_eye_landmarks']]
+            
+            draw_eye_landmarks(
+                original_frame,
+                left_eye,
+                right_eye,
+                drowsiness_data['eyes_closed']
+            )
+            
+            # Draw mouth landmarks
+            mouth = [(int(x * scale_x), int(y * scale_y)) 
+                    for x, y in drowsiness_data['mouth_landmarks']]
+            
+            draw_mouth_landmarks(
+                original_frame,
+                mouth,
+                drowsiness_data['yawning']
+            )
+        
+        # Draw alert overlay (works even without face detected)
+        if drowsiness_data:
+            self.alert_system.draw_alert_overlay(original_frame, drowsiness_data)
+            
+            # Trigger alerts
+            self.alert_system.trigger_alert(drowsiness_data)
+            
+            # Draw statistics dashboard
+            draw_dashboard(original_frame, drowsiness_data)
         
         return original_frame
     
@@ -141,8 +182,7 @@ class FaceLandmarkApp:
             log.error("Initialization failed. Exiting...")
             return
         
-        log.info("Starting main loop. Press 'q' to quit.")
-        log.info("TIP: Adjust DRAW_CONNECTIONS in config/settings.py for visual preferences")
+        log.info("Starting drowsiness detection. Stay alert!")
         
         try:
             while True:
@@ -164,18 +204,25 @@ class FaceLandmarkApp:
                 draw_fps(output_frame, fps)
                 
                 # Display frame
-                cv2.imshow("Face Landmark Tracker - MediaPipe", output_frame)
+                cv2.imshow("Drowsiness Detection System", output_frame)
                 
-                # Check for quit key
+                # Check for key press
                 key = cv2.waitKey(1) & 0xFF
+                
                 if key == ord('q'):
                     log.info("Quit signal received")
                     break
+                
                 elif key == ord('s'):
-                    # Save screenshot (bonus feature)
-                    filename = f"screenshot_{int(self.fps_counter.frame_count)}.png"
+                    # Save screenshot
+                    filename = f"drowsiness_screenshot_{int(self.fps_counter.frame_count)}.png"
                     cv2.imwrite(filename, output_frame)
                     log.info(f"Screenshot saved: {filename}")
+                
+                elif key == ord('r'):
+                    # Reset statistics
+                    self.drowsiness_detector.reset()
+                    log.info("Statistics reset")
                 
         except KeyboardInterrupt:
             log.info("Interrupted by user")
@@ -193,13 +240,22 @@ class FaceLandmarkApp:
         log.info("Cleaning up resources...")
         self.camera.release()
         self.detector.release()
+        self.alert_system.cleanup()
         cv2.destroyAllWindows()
+        
+        # Print final statistics
+        log.info("=" * 70)
+        log.info("SESSION SUMMARY:")
+        log.info(f"  Total Eye Closures: {self.drowsiness_detector.total_eye_closures}")
+        log.info(f"  Total Yawns: {self.drowsiness_detector.total_yawns}")
+        log.info(f"  Total Frames: {self.fps_counter.frame_count}")
+        log.info("=" * 70)
         log.info("Application terminated successfully")
 
 
 def main():
     """Entry point of the application."""
-    app = FaceLandmarkApp()
+    app = DrowsinessDetectionApp()
     app.run()
 
 
