@@ -40,6 +40,10 @@ class DrowsinessDetector:
         self.total_eye_closures = 0
         self.total_yawns = 0
         
+        # FIX #1 & #2: Track if face is detected
+        self.face_detected = False
+        self.no_face_counter = 0
+        
         log.info("Drowsiness detector initialized")
     
     def calculate_eye_aspect_ratio(self, eye_landmarks):
@@ -112,8 +116,21 @@ class DrowsinessDetector:
         Returns:
             dict: Detection results
         """
+        # FIX #1 & #2: Handle no face detection properly
         if not all_landmarks or len(all_landmarks) < 468:
+            self.face_detected = False
+            self.no_face_counter += 1
+            
+            # Rapidly decrease drowsiness score when no face detected
+            if self.no_face_counter > 5:  # After 5 frames
+                self.drowsiness_score = max(0, self.drowsiness_score - 5.0)
+                self.alert_level = "NORMAL"
+            
             return self._get_default_result()
+        
+        # FIX #1: Face detected, reset counter
+        self.face_detected = True
+        self.no_face_counter = 0
         
         # Extract eye landmarks
         left_eye = [all_landmarks[i] for i in self.LEFT_EYE_INDICES]
@@ -136,6 +153,7 @@ class DrowsinessDetector:
             if self.eye_closure_counter >= Config.EAR_CONSEC_FRAMES:
                 eyes_closed = True
                 self.is_drowsy = True
+                # FIX #2: Only increment if actually drowsy
                 self.drowsiness_score = min(
                     Config.DROWSINESS_SCORE_MAX,
                     self.drowsiness_score + Config.DROWSINESS_SCORE_INCREMENT_EYES
@@ -147,9 +165,10 @@ class DrowsinessDetector:
             self.eye_closure_counter = 0
             self.is_drowsy = False
         
-        # Detect yawning
+        # FIX #3: Improved yawn detection with better thresholding
         yawning = False
-        if mar > Config.MAR_THRESHOLD:
+        # Only detect yawn if mouth is SIGNIFICANTLY open
+        if mar > Config.MAR_THRESHOLD and avg_ear > 0.2:  # Eyes must be open for valid yawn
             self.yawn_counter += 1
             if self.yawn_counter >= Config.MAR_CONSEC_FRAMES:
                 yawning = True
@@ -165,7 +184,7 @@ class DrowsinessDetector:
             self.yawn_counter = 0
             self.is_yawning = False
         
-        # Decay drowsiness score when alert
+        # FIX #2: Faster decay when alert (more aggressive)
         if not eyes_closed and not yawning:
             self.drowsiness_score = max(0, self.drowsiness_score - Config.DROWSINESS_SCORE_DECAY)
         
@@ -190,16 +209,18 @@ class DrowsinessDetector:
             'total_yawns': self.total_yawns,
             'left_eye_landmarks': left_eye,
             'right_eye_landmarks': right_eye,
-            'mouth_landmarks': mouth
+            'mouth_landmarks': mouth,
+            'face_detected': self.face_detected  # FIX #1: Add face detection flag
         }
     
     def _get_default_result(self):
         """Return default result when no face detected."""
+        # FIX #1: Clear status when no face
         return {
             'ear': 0.0,
             'mar': 0.0,
-            'eyes_closed': False,
-            'yawning': False,
+            'eyes_closed': False,  # FIX #1: Show as false when no face
+            'yawning': False,       # FIX #1: Show as false when no face
             'drowsiness_score': self.drowsiness_score,
             'alert_level': self.alert_level,
             'eye_closure_counter': 0,
@@ -208,7 +229,8 @@ class DrowsinessDetector:
             'total_yawns': self.total_yawns,
             'left_eye_landmarks': [],
             'right_eye_landmarks': [],
-            'mouth_landmarks': []
+            'mouth_landmarks': [],
+            'face_detected': False  # FIX #1: Explicitly mark as no face
         }
     
     def reset(self):
@@ -221,4 +243,6 @@ class DrowsinessDetector:
         self.alert_level = "NORMAL"
         self.total_eye_closures = 0
         self.total_yawns = 0
+        self.face_detected = False
+        self.no_face_counter = 0
         log.info("Drowsiness detector reset")

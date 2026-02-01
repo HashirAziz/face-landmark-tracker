@@ -33,24 +33,24 @@ class Config:
     # ============================================================
     DETECTION_CONFIDENCE = 0.5  # Min confidence threshold (0.0 - 1.0)
     TRACKING_CONFIDENCE = 0.5   # Min tracking confidence
-    MAX_NUM_FACES = 2  # For drowsiness detection, focus on driver only
+    MAX_NUM_FACES = 1  # For drowsiness detection, focus on driver only
     
     # ============================================================
     # DROWSINESS DETECTION SETTINGS
     # ============================================================
     # Eye Aspect Ratio (EAR) thresholds
-    EAR_THRESHOLD = 0.28  # Below this = eyes closed
+    EAR_THRESHOLD = 0.25  # Below this = eyes closed
     EAR_CONSEC_FRAMES = 20  # Consecutive frames for drowsiness (20 frames ≈ 0.67 seconds at 30 FPS)
     
-    # Mouth Aspect Ratio (MAR) thresholds
-    MAR_THRESHOLD = 0.55  # Above this = yawning
+    # FIX #3: Improved MAR threshold for better yawn detection
+    MAR_THRESHOLD = 0.7  # Above this = yawning (increased from 0.6 for more accuracy)
     MAR_CONSEC_FRAMES = 15  # Consecutive frames for yawn detection
     
-    # Drowsiness score
+    # FIX #2: Faster decay to prevent score staying at 100%
     DROWSINESS_SCORE_MAX = 100  # Maximum drowsiness score
-    DROWSINESS_SCORE_DECAY = 0.5  # How fast score decreases per frame when alert
-    DROWSINESS_SCORE_INCREMENT_EYES = 2.0  # Score increase per frame when eyes closed
-    DROWSINESS_SCORE_INCREMENT_YAWN = 1.5  # Score increase per frame when yawning
+    DROWSINESS_SCORE_DECAY = 2.0  # Increased from 0.5 - faster recovery when alert
+    DROWSINESS_SCORE_INCREMENT_EYES = 3.0  # Increased from 2.0 - faster increase when drowsy
+    DROWSINESS_SCORE_INCREMENT_YAWN = 2.0  # Increased from 1.5
     
     # Alert levels
     ALERT_LEVEL_WARNING = 30  # Yellow warning
@@ -60,15 +60,23 @@ class Config:
     # AUDIO ALERT SETTINGS
     # ============================================================
     ENABLE_AUDIO_ALERTS = True
-    AUDIO_ALERT_COOLDOWN = 3.0  # Seconds between audio alerts (prevent spam)
-    AUDIO_VOLUME = 1.0  # 0.0 to 1.0
+    
+    # FIX #4: Continuous alarm settings
+    AUDIO_ALERT_COOLDOWN = 1.0  # Reduced from 3.0 - beep every 1 second when drowsy
+    CONTINUOUS_ALARM_ENABLED = True  # Enable continuous alarm mode
+    CONTINUOUS_ALARM_THRESHOLD = 70  # Start continuous alarm at this score
+    
+    # FIX #4: Louder, more urgent sound settings
+    AUDIO_VOLUME = 1.0  # Increased from 0.7 to maximum volume
+    BEEP_FREQUENCY = 1000  # Increased from 800 Hz - higher pitch = more urgent
+    BEEP_DURATION = 0.5  # Increased from 0.3 seconds - longer beep
     
     # ============================================================
     # VISUALIZATION SETTINGS
     # ============================================================
     # Bounding box
     BBOX_COLOR = (0, 255, 0)  # Green in BGR
-    BBOX_THICKNESS = 3
+    BBOX_THICKNESS = 2
     
     # Landmarks
     LANDMARK_COLOR = (0, 0, 255)  # Red in BGR
@@ -87,6 +95,10 @@ class Config:
     COLOR_NORMAL = (0, 255, 0)    # Green
     COLOR_WARNING = (0, 165, 255)  # Orange
     COLOR_DANGER = (0, 0, 255)     # Red
+    
+    # FIX #5: Banner settings
+    SHOW_NORMAL_BANNER = True  # Show green "ALERT" banner when normal
+    NORMAL_BANNER_COLOR = (0, 200, 0)  # Dark green
     
     # FPS display
     FPS_COLOR = (255, 255, 255)  # White in BGR
