@@ -39,37 +39,46 @@ class Config:
     # DROWSINESS DETECTION SETTINGS
     # ============================================================
     # Eye Aspect Ratio (EAR) thresholds
-    EAR_THRESHOLD = 0.25  # Below this = eyes closed
-    EAR_CONSEC_FRAMES = 20  # Consecutive frames for drowsiness (20 frames ≈ 0.67 seconds at 30 FPS)
+    # CRITICAL: Lower threshold = more sensitive to eye closure
+    EAR_THRESHOLD = 0.21  # Below this = eyes closed (decreased from 0.25 for better detection)
     
-    # FIX #3: Improved MAR threshold for better yawn detection
-    MAR_THRESHOLD = 0.7  # Above this = yawning (increased from 0.6 for more accuracy)
-    MAR_CONSEC_FRAMES = 15  # Consecutive frames for yawn detection
+    # CRITICAL: Number of CONSECUTIVE frames before counting as drowsiness
+    # This filters out normal BLINKS (which are ~3-5 frames)
+    EAR_CONSEC_FRAMES = 30  # Increased from 20 - only count PROLONGED closures, not blinks
     
-    # FIX #2: Faster decay to prevent score staying at 100%
+    # Mouth Aspect Ratio (MAR) thresholds for yawn detection
+    # CRITICAL: Higher threshold = only detect REAL yawns, not talking
+    MAR_THRESHOLD = 0.75  # Above this = yawning (increased from 0.6 to avoid false positives)
+    MAR_CONSEC_FRAMES = 20  # Increased from 15 - must be sustained
+    
+    # Drowsiness score settings
     DROWSINESS_SCORE_MAX = 100  # Maximum drowsiness score
-    DROWSINESS_SCORE_DECAY = 2.0  # Increased from 0.5 - faster recovery when alert
-    DROWSINESS_SCORE_INCREMENT_EYES = 3.0  # Increased from 2.0 - faster increase when drowsy
-    DROWSINESS_SCORE_INCREMENT_YAWN = 2.0  # Increased from 1.5
+    
+    # CRITICAL: Fast decay when alert (user recovers quickly)
+    DROWSINESS_SCORE_DECAY = 3.0  # How fast score decreases when alert (increased from 2.0)
+    
+    # CRITICAL: Moderate increase when drowsy
+    DROWSINESS_SCORE_INCREMENT_EYES = 2.5  # Score increase per frame when eyes closed
+    DROWSINESS_SCORE_INCREMENT_YAWN = 1.5  # Score increase per frame when yawning
     
     # Alert levels
-    ALERT_LEVEL_WARNING = 30  # Yellow warning
-    ALERT_LEVEL_DANGER = 60   # Red danger
+    ALERT_LEVEL_WARNING = 35  # Yellow warning (increased from 30)
+    ALERT_LEVEL_DANGER = 65   # Red danger (increased from 60)
     
     # ============================================================
     # AUDIO ALERT SETTINGS
     # ============================================================
     ENABLE_AUDIO_ALERTS = True
     
-    # FIX #4: Continuous alarm settings
-    AUDIO_ALERT_COOLDOWN = 1.0  # Reduced from 3.0 - beep every 1 second when drowsy
+    # Continuous alarm settings
+    AUDIO_ALERT_COOLDOWN = 1.0  # Seconds between beeps
     CONTINUOUS_ALARM_ENABLED = True  # Enable continuous alarm mode
     CONTINUOUS_ALARM_THRESHOLD = 70  # Start continuous alarm at this score
     
-    # FIX #4: Louder, more urgent sound settings
-    AUDIO_VOLUME = 1.0  # Increased from 0.7 to maximum volume
-    BEEP_FREQUENCY = 1000  # Increased from 800 Hz - higher pitch = more urgent
-    BEEP_DURATION = 0.5  # Increased from 0.3 seconds - longer beep
+    # Sound settings - LOUD and URGENT
+    AUDIO_VOLUME = 1.0  # Maximum volume
+    BEEP_FREQUENCY = 1000  # Hz - higher pitch = more urgent
+    BEEP_DURATION = 0.5  # seconds
     
     # ============================================================
     # VISUALIZATION SETTINGS
@@ -83,11 +92,11 @@ class Config:
     LANDMARK_RADIUS = 2
     LANDMARK_THICKNESS = -1  # Filled circle
     
-    # Eye landmarks (highlight when analyzing)
+    # Eye landmarks
     EYE_COLOR = (255, 0, 255)  # Magenta
     EYE_THICKNESS = 1
     
-    # Mouth landmarks (highlight when analyzing)
+    # Mouth landmarks
     MOUTH_COLOR = (0, 255, 255)  # Yellow
     MOUTH_THICKNESS = 1
     
@@ -96,8 +105,8 @@ class Config:
     COLOR_WARNING = (0, 165, 255)  # Orange
     COLOR_DANGER = (0, 0, 255)     # Red
     
-    # FIX #5: Banner settings
-    SHOW_NORMAL_BANNER = True  # Show green "ALERT" banner when normal
+    # Banner settings
+    SHOW_NORMAL_BANNER = True  # Show green banner when normal
     NORMAL_BANNER_COLOR = (0, 200, 0)  # Dark green
     
     # FPS display
