@@ -65,14 +65,10 @@ class Config:
     ALERT_LEVEL_DANGER = 65   # Red danger
     
     # ============================================================
-    # PHONE DETECTION SETTINGS (FIXED!)
+    # PHONE DETECTION SETTINGS (NEW!)
     # ============================================================
-    # CRITICAL FIX: Lowered threshold from 0.6 to 0.4 for easier detection
-    PHONE_DETECTION_THRESHOLD = 0.4  # Confidence threshold (0.0 - 1.0)
-    
-    # CRITICAL: This controls the 2-3 second delay
-    # At 30 FPS: 60 frames = 2 seconds, 90 frames = 3 seconds
-    PHONE_CONSEC_FRAMES = 60  # 2 seconds at 30 FPS (CHANGED from 15)
+    PHONE_DETECTION_THRESHOLD = 0.6  # Confidence threshold (0.0 - 1.0)
+    PHONE_CONSEC_FRAMES = 15  # Consecutive frames to confirm phone usage
     
     # Phone usage scoring
     PHONE_SCORE_INCREMENT = 5.0  # Score increase per frame when phone detected
