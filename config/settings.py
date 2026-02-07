@@ -36,34 +36,47 @@ class Config:
     MAX_NUM_FACES = 1  # For drowsiness detection, focus on driver only
     
     # ============================================================
+    # HAND DETECTION SETTINGS (MediaPipe)
+    # ============================================================
+    ENABLE_HAND_DETECTION = True  # Enable phone detection
+    HAND_DETECTION_CONFIDENCE = 0.5
+    HAND_TRACKING_CONFIDENCE = 0.5
+    MAX_NUM_HANDS = 2
+    
+    # ============================================================
     # DROWSINESS DETECTION SETTINGS
     # ============================================================
     # Eye Aspect Ratio (EAR) thresholds
-    # CRITICAL: Lower threshold = more sensitive to eye closure
-    EAR_THRESHOLD = 0.21  # Below this = eyes closed (decreased from 0.25 for better detection)
+    EAR_THRESHOLD = 0.21  # Below this = eyes closed
+    EAR_CONSEC_FRAMES = 30  # Consecutive frames for drowsiness
     
-    # CRITICAL: Number of CONSECUTIVE frames before counting as drowsiness
-    # This filters out normal BLINKS (which are ~3-5 frames)
-    EAR_CONSEC_FRAMES = 30  # Increased from 20 - only count PROLONGED closures, not blinks
+    # Mouth Aspect Ratio (MAR) thresholds
+    MAR_THRESHOLD = 0.75  # Above this = yawning
+    MAR_CONSEC_FRAMES = 20  # Consecutive frames for yawn detection
     
-    # Mouth Aspect Ratio (MAR) thresholds for yawn detection
-    # CRITICAL: Higher threshold = only detect REAL yawns, not talking
-    MAR_THRESHOLD = 0.75  # Above this = yawning (increased from 0.6 to avoid false positives)
-    MAR_CONSEC_FRAMES = 20  # Increased from 15 - must be sustained
-    
-    # Drowsiness score settings
+    # Drowsiness score
     DROWSINESS_SCORE_MAX = 100  # Maximum drowsiness score
-    
-    # CRITICAL: Fast decay when alert (user recovers quickly)
-    DROWSINESS_SCORE_DECAY = 3.0  # How fast score decreases when alert (increased from 2.0)
-    
-    # CRITICAL: Moderate increase when drowsy
-    DROWSINESS_SCORE_INCREMENT_EYES = 2.5  # Score increase per frame when eyes closed
-    DROWSINESS_SCORE_INCREMENT_YAWN = 1.5  # Score increase per frame when yawning
+    DROWSINESS_SCORE_DECAY = 3.0  # How fast score decreases when alert
+    DROWSINESS_SCORE_INCREMENT_EYES = 2.5  # Score increase when eyes closed
+    DROWSINESS_SCORE_INCREMENT_YAWN = 1.5  # Score increase when yawning
     
     # Alert levels
-    ALERT_LEVEL_WARNING = 35  # Yellow warning (increased from 30)
-    ALERT_LEVEL_DANGER = 65   # Red danger (increased from 60)
+    ALERT_LEVEL_WARNING = 35  # Yellow warning
+    ALERT_LEVEL_DANGER = 65   # Red danger
+    
+    # ============================================================
+    # PHONE DETECTION SETTINGS (FIXED!)
+    # ============================================================
+    # CRITICAL FIX: Lowered threshold from 0.6 to 0.4 for easier detection
+    PHONE_DETECTION_THRESHOLD = 0.4  # Confidence threshold (0.0 - 1.0)
+    
+    # CRITICAL: This controls the 2-3 second delay
+    # At 30 FPS: 60 frames = 2 seconds, 90 frames = 3 seconds
+    PHONE_CONSEC_FRAMES = 60  # 2 seconds at 30 FPS (CHANGED from 15)
+    
+    # Phone usage scoring
+    PHONE_SCORE_INCREMENT = 5.0  # Score increase per frame when phone detected
+    PHONE_ALERT_THRESHOLD = 50  # Trigger alert at this score
     
     # ============================================================
     # AUDIO ALERT SETTINGS
@@ -100,10 +113,15 @@ class Config:
     MOUTH_COLOR = (0, 255, 255)  # Yellow
     MOUTH_THICKNESS = 1
     
+    # Hand landmarks (for phone detection)
+    HAND_COLOR = (255, 128, 0)  # Orange
+    HAND_THICKNESS = 2
+    
     # Alert colors
     COLOR_NORMAL = (0, 255, 0)    # Green
     COLOR_WARNING = (0, 165, 255)  # Orange
     COLOR_DANGER = (0, 0, 255)     # Red
+    COLOR_PHONE = (255, 0, 255)    # Magenta for phone alert
     
     # Banner settings
     SHOW_NORMAL_BANNER = True  # Show green banner when normal

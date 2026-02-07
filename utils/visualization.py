@@ -1,6 +1,6 @@
 """
 Visualization utilities for drawing bounding boxes and landmarks.
-Includes drowsiness-specific visualizations.
+Includes drowsiness and phone detection visualizations.
 """
 
 import cv2
@@ -109,21 +109,15 @@ def draw_eye_landmarks(frame, left_eye, right_eye, eyes_closed=False):
     
     # Draw left eye
     if left_eye and len(left_eye) >= 6:
-        # Draw eye contour
         points = np.array(left_eye, dtype=np.int32)
         cv2.polylines(frame, [points], True, color, Config.EYE_THICKNESS)
-        
-        # Draw landmarks
         for point in left_eye:
             cv2.circle(frame, point, 2, color, -1)
     
     # Draw right eye
     if right_eye and len(right_eye) >= 6:
-        # Draw eye contour
         points = np.array(right_eye, dtype=np.int32)
         cv2.polylines(frame, [points], True, color, Config.EYE_THICKNESS)
-        
-        # Draw landmarks
         for point in right_eye:
             cv2.circle(frame, point, 2, color, -1)
     
@@ -184,13 +178,13 @@ def draw_fps(frame, fps_value):
     return frame
 
 
-def draw_dashboard(frame, drowsiness_data):
+def draw_dashboard(frame, combined_data):
     """
-    Draw statistics dashboard.
+    Draw statistics dashboard with drowsiness AND phone detection.
     
     Args:
         frame (np.ndarray): Input frame
-        drowsiness_data (dict): Drowsiness detection data
+        combined_data (dict): Combined detection data
     
     Returns:
         np.ndarray: Frame with dashboard drawn
@@ -207,10 +201,14 @@ def draw_dashboard(frame, drowsiness_data):
     
     # Statistics
     stats = [
-        f"Alert: {drowsiness_data['alert_level']}",
-        f"Eye Closures: {drowsiness_data['total_eye_closures']}",
-        f"Yawns: {drowsiness_data['total_yawns']}",
+        f"Alert: {combined_data['alert_level']}",
+        f"Eye Closures: {combined_data['total_eye_closures']}",
+        f"Yawns: {combined_data['total_yawns']}",
     ]
+    
+    # Add phone stats if available
+    if 'phone_detections' in combined_data:
+        stats.append(f"Phone Uses: {combined_data['phone_detections']}")
     
     # Draw semi-transparent background
     bg_height = len(stats) * spacing + 20

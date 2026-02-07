@@ -1,6 +1,9 @@
 """
 Face detection using MediaPipe library (Google's solution).
 MediaPipe provides fast, accurate face detection with 468 facial landmarks.
+
+Note: This detector is for FACE detection only.
+Hand detection is handled separately in the main app using MediaPipe Hands.
 """
 
 import cv2
