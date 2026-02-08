@@ -1,6 +1,5 @@
 """
-Configuration settings for the face landmark tracker.
-All configurable parameters are centralized here.
+Configuration settings for the driver safety monitoring system.
 """
 
 import os
@@ -20,25 +19,23 @@ class Config:
     # ============================================================
     # CAMERA SETTINGS
     # ============================================================
-    CAMERA_ID = 0  # Default webcam (0 = primary, 1 = secondary)
-    FRAME_WIDTH = 1280  # Original capture width
-    FRAME_HEIGHT = 720  # Original capture height
-    
-    # Processing resolution (resize for speed)
-    PROCESS_WIDTH = 640  # Lower = faster, but less accurate
+    CAMERA_ID = 0
+    FRAME_WIDTH = 1000
+    FRAME_HEIGHT = 1000
+    PROCESS_WIDTH = 640
     PROCESS_HEIGHT = 480
     
     # ============================================================
-    # FACE DETECTION SETTINGS (MediaPipe)
+    # FACE DETECTION SETTINGS
     # ============================================================
-    DETECTION_CONFIDENCE = 0.5  # Min confidence threshold (0.0 - 1.0)
-    TRACKING_CONFIDENCE = 0.5   # Min tracking confidence
-    MAX_NUM_FACES = 1  # For drowsiness detection, focus on driver only
+    DETECTION_CONFIDENCE = 0.5
+    TRACKING_CONFIDENCE = 0.5
+    MAX_NUM_FACES = 1
     
     # ============================================================
-    # HAND DETECTION SETTINGS (MediaPipe)
+    # HAND DETECTION SETTINGS
     # ============================================================
-    ENABLE_HAND_DETECTION = True  # Enable phone detection
+    ENABLE_HAND_DETECTION = True
     HAND_DETECTION_CONFIDENCE = 0.5
     HAND_TRACKING_CONFIDENCE = 0.5
     MAX_NUM_HANDS = 2
@@ -46,105 +43,84 @@ class Config:
     # ============================================================
     # DROWSINESS DETECTION SETTINGS
     # ============================================================
-    # Eye Aspect Ratio (EAR) thresholds
-    EAR_THRESHOLD = 0.21  # Below this = eyes closed
-    EAR_CONSEC_FRAMES = 30  # Consecutive frames for drowsiness
-    
-    # Mouth Aspect Ratio (MAR) thresholds
-    MAR_THRESHOLD = 0.75  # Above this = yawning
-    MAR_CONSEC_FRAMES = 20  # Consecutive frames for yawn detection
-    
-    # Drowsiness score
-    DROWSINESS_SCORE_MAX = 100  # Maximum drowsiness score
-    DROWSINESS_SCORE_DECAY = 3.0  # How fast score decreases when alert
-    DROWSINESS_SCORE_INCREMENT_EYES = 2.5  # Score increase when eyes closed
-    DROWSINESS_SCORE_INCREMENT_YAWN = 1.5  # Score increase when yawning
-    
-    # Alert levels
-    ALERT_LEVEL_WARNING = 35  # Yellow warning
-    ALERT_LEVEL_DANGER = 65   # Red danger
+    EAR_THRESHOLD = 0.21
+    EAR_CONSEC_FRAMES = 30
+    MAR_THRESHOLD = 0.75
+    MAR_CONSEC_FRAMES = 20
+    DROWSINESS_SCORE_MAX = 100
+    DROWSINESS_SCORE_DECAY = 3.0
+    DROWSINESS_SCORE_INCREMENT_EYES = 2.5
+    DROWSINESS_SCORE_INCREMENT_YAWN = 1.5
+    ALERT_LEVEL_WARNING = 35
+    ALERT_LEVEL_DANGER = 65
     
     # ============================================================
-    # PHONE DETECTION SETTINGS (NEW!)
+    # PHONE DETECTION SETTINGS
     # ============================================================
-    PHONE_DETECTION_THRESHOLD = 0.6  # Confidence threshold (0.0 - 1.0)
-    PHONE_CONSEC_FRAMES = 15  # Consecutive frames to confirm phone usage
-    
-    # Phone usage scoring
-    PHONE_SCORE_INCREMENT = 5.0  # Score increase per frame when phone detected
-    PHONE_ALERT_THRESHOLD = 50  # Trigger alert at this score
+    PHONE_DETECTION_THRESHOLD = 0.6  
+    PHONE_CONSEC_FRAMES = 150  # 5 seconds at 30 FPS
+    PHONE_SCORE_INCREMENT = 5.0
+    PHONE_ALERT_THRESHOLD = 50
     
     # ============================================================
     # AUDIO ALERT SETTINGS
     # ============================================================
     ENABLE_AUDIO_ALERTS = True
-    
-    # Continuous alarm settings
-    AUDIO_ALERT_COOLDOWN = 1.0  # Seconds between beeps
-    CONTINUOUS_ALARM_ENABLED = True  # Enable continuous alarm mode
-    CONTINUOUS_ALARM_THRESHOLD = 70  # Start continuous alarm at this score
-    
-    # Sound settings - LOUD and URGENT
-    AUDIO_VOLUME = 1.0  # Maximum volume
-    BEEP_FREQUENCY = 1000  # Hz - higher pitch = more urgent
-    BEEP_DURATION = 0.5  # seconds
+    AUDIO_ALERT_COOLDOWN = 1.0
+    CONTINUOUS_ALARM_ENABLED = True
+    CONTINUOUS_ALARM_THRESHOLD = 70
+    AUDIO_VOLUME = 1.0
+    BEEP_FREQUENCY = 1000
+    BEEP_DURATION = 0.5
     
     # ============================================================
-    # VISUALIZATION SETTINGS
+    # VISUALIZATION SETTINGS (ORGANIZED FOR NO OVERLAP)
     # ============================================================
-    # Bounding box
-    BBOX_COLOR = (0, 255, 0)  # Green in BGR
+    # Colors (BGR Format for OpenCV)
+    BBOX_COLOR = (0, 255, 0)      # Green
     BBOX_THICKNESS = 2
-    
-    # Landmarks
-    LANDMARK_COLOR = (0, 0, 255)  # Red in BGR
+    LANDMARK_COLOR = (0, 0, 255)  # Red
     LANDMARK_RADIUS = 2
-    LANDMARK_THICKNESS = -1  # Filled circle
+    LANDMARK_THICKNESS = -1
     
-    # Eye landmarks
-    EYE_COLOR = (255, 0, 255)  # Magenta
+    EYE_COLOR = (255, 255, 0)     # Cyan (Replaced Magenta)
     EYE_THICKNESS = 1
-    
-    # Mouth landmarks
-    MOUTH_COLOR = (0, 255, 255)  # Yellow
+    MOUTH_COLOR = (0, 255, 255)   # Yellow
     MOUTH_THICKNESS = 1
-    
-    # Hand landmarks (for phone detection)
-    HAND_COLOR = (255, 128, 0)  # Orange
+    HAND_COLOR = (255, 128, 0)    # Blue-Orange
     HAND_THICKNESS = 2
     
-    # Alert colors
     COLOR_NORMAL = (0, 255, 0)    # Green
-    COLOR_WARNING = (0, 165, 255)  # Orange
-    COLOR_DANGER = (0, 0, 255)     # Red
-    COLOR_PHONE = (255, 0, 255)    # Magenta for phone alert
+    COLOR_WARNING = (0, 165, 255) # Orange
+    COLOR_DANGER = (0, 0, 255)    # Red
+    COLOR_PHONE = (255, 255, 0)   # Cyan (Replaced Magenta)
     
-    # Banner settings
-    SHOW_NORMAL_BANNER = True  # Show green banner when normal
-    NORMAL_BANNER_COLOR = (0, 200, 0)  # Dark green
+    # Main Banner
+    SHOW_NORMAL_BANNER = True
+    NORMAL_BANNER_COLOR = (0, 200, 0)
     
-    # FPS display
-    FPS_COLOR = (255, 255, 255)  # White in BGR
-    FPS_POSITION = (10, 30)
-    FPS_FONT = 0  # cv2.FONT_HERSHEY_SIMPLEX
-    FPS_SCALE = 0.7
+    # FPS Text Positioning
+    FPS_COLOR = (255, 255, 255)
+    FPS_POSITION = (10, 30) 
+    FPS_FONT = 0
+    FPS_SCALE = 0.5
     FPS_THICKNESS = 2
     
-    # Dashboard settings
+    # Dashboard Text Positioning
     SHOW_DASHBOARD = True
-    DASHBOARD_POSITION = (10, 60)
-    DASHBOARD_FONT_SCALE = 0.6
-    DASHBOARD_LINE_SPACING = 25
+    DASHBOARD_POSITION = (10, 110)  
+    DASHBOARD_FONT_SCALE = 0.55     
+    DASHBOARD_LINE_SPACING = 20     
     
     # ============================================================
     # PERFORMANCE SETTINGS
     # ============================================================
-    TARGET_FPS = 30
+    TARGET_FPS = 120
     
     # ============================================================
     # LOGGING
     # ============================================================
-    LOG_LEVEL = "INFO"  # DEBUG, INFO, WARNING, ERROR
+    LOG_LEVEL = "INFO"
     
     @classmethod
     def create_directories(cls):

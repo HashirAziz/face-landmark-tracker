@@ -188,7 +188,7 @@ class DriverSafetyApp:
         
         # Draw MAGENTA banner for phone usage
         color = Config.COLOR_PHONE
-        message = "⚠️ PHONE USAGE DETECTED! FOCUS ON DRIVING! ⚠️"
+        message = "PHONE USAGE DETECTED! FOCUS ON DRIVING LEAVE THE PHONE!"
         banner_height = 90
         
         # Draw semi-transparent banner
@@ -223,12 +223,12 @@ class DriverSafetyApp:
         phone_status = "DETECTED" if phone_data['phone_detected'] else "NOT DETECTED"
         phone_color = Config.COLOR_PHONE if phone_data['phone_detected'] else Config.COLOR_NORMAL
         cv2.putText(frame, f"Phone: {phone_status}", (x, y), 
-                   cv2.FONT_HERSHEY_SIMPLEX, 0.5, phone_color, 2)
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, phone_color, 2)
         
         # Confidence
         if Config.ENABLE_HAND_DETECTION:
             cv2.putText(frame, f"Conf: {phone_data['confidence']:.2f}", (x, y + 20), 
-                       cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), 1)
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), 1)
     
     def update_dashboard(self, drowsiness_data, phone_data):
         """
@@ -315,9 +315,9 @@ class DriverSafetyApp:
             
             # Draw eye landmarks
             left_eye = [(int(x * scale_x), int(y * scale_y)) 
-                       for x, y in drowsiness_data['left_eye_landmarks']]
+                        for x, y in drowsiness_data['left_eye_landmarks']]
             right_eye = [(int(x * scale_x), int(y * scale_y)) 
-                        for x, y in drowsiness_data['right_eye_landmarks']]
+                         for x, y in drowsiness_data['right_eye_landmarks']]
             
             draw_eye_landmarks(
                 original_frame,
@@ -328,7 +328,7 @@ class DriverSafetyApp:
             
             # Draw mouth landmarks
             mouth = [(int(x * scale_x), int(y * scale_y)) 
-                    for x, y in drowsiness_data['mouth_landmarks']]
+                     for x, y in drowsiness_data['mouth_landmarks']]
             
             draw_mouth_landmarks(
                 original_frame,
@@ -351,6 +351,23 @@ class DriverSafetyApp:
                     face_info['landmarks'],
                     bbox
                 )
+                
+                # Draw phone bounding box if detected
+                if phone_data and phone_data.get('phone_bbox'):
+                    phone_bbox = phone_data['phone_bbox']
+                    x1, y1, x2, y2 = phone_bbox
+                    
+                    # Draw magenta box around phone
+                    cv2.rectangle(original_frame, (x1, y1), (x2, y2),
+                                 Config.PHONE_BBOX_COLOR, Config.PHONE_BBOX_THICKNESS)
+                    
+                    # Draw "Phone" label
+                    label = "Phone"
+                    label_size = cv2.getTextSize(label, Config.FPS_FONT, 0.6, 2)[0]
+                    cv2.rectangle(original_frame, (x1, y1 - label_size[1] - 10),
+                                 (x1 + label_size[0] + 10, y1), Config.PHONE_BBOX_COLOR, -1)
+                    cv2.putText(original_frame, label, (x1 + 5, y1 - 5),
+                               Config.FPS_FONT, 0.6, (255, 255, 255), 2)
                 
                 # Draw hand landmarks
                 self.draw_hand_landmarks(original_frame, scaled_hand_landmarks)

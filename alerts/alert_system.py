@@ -243,10 +243,10 @@ class AlertSystem:
         height, width = frame.shape[:2]
         
         # Bar dimensions
-        bar_width = 200
+        bar_width = 125
         bar_height = 20
         bar_x = width - bar_width - 20
-        bar_y = 20
+        bar_y = 200
         
         # Background
         cv2.rectangle(frame, (bar_x, bar_y), (bar_x + bar_width, bar_y + bar_height), (50, 50, 50), -1)
@@ -282,7 +282,7 @@ class AlertSystem:
         
         # Position
         x = width - 220
-        y = 60
+        y = 80
         
         # FIX #1: Only show status if face is detected
         face_detected = drowsiness_data.get('face_detected', True)

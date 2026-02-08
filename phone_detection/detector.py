@@ -1,6 +1,6 @@
 """
 Phone usage detection module.
-Detects when driver is using a mobile phone by analyzing hand positions.
+Detects ACTUAL phone usage by requiring hand to be very close to face/ear.
 """
 
 import numpy as np
@@ -10,10 +10,15 @@ from utils.logger import log
 
 
 class PhoneDetector:
-    """Detect phone usage using hand position analysis."""
+    """Detect phone usage - only when hand is VERY close to face (like holding phone to ear)."""
     
     # MediaPipe hand landmark indices
     WRIST = 0
+    THUMB_CMC = 1
+    INDEX_MCP = 5
+    MIDDLE_MCP = 9
+    RING_MCP = 13
+    PINKY_MCP = 17
     THUMB_TIP = 4
     INDEX_TIP = 8
     MIDDLE_TIP = 12
@@ -31,170 +36,126 @@ class PhoneDetector:
         self.current_phone_duration = 0  # Frames
         self.longest_phone_duration = 0  # Frames
         
-        # Tracking
-        self.last_detection_time = 0
-        
         log.info("Phone detector initialized")
-    
-    def is_hand_near_face(self, hand_landmarks, face_bbox, frame_shape):
+
+    def calculate_hand_to_face_distance(self, hand_landmarks, face_bbox):
         """
-        Check if hand is positioned near face (phone usage position).
+        Calculate precise distance from hand to face.
         
         Args:
-            hand_landmarks (list): Hand landmark coordinates [(x, y), ...]
-            face_bbox (tuple): Face bounding box (x1, y1, x2, y2)
-            frame_shape (tuple): Frame dimensions (height, width)
+            hand_landmarks (list): Hand landmarks
+            face_bbox (tuple): Face bounding box
         
         Returns:
-            tuple: (is_near, distance_ratio)
+            float: Distance ratio (0.0 = touching face, higher = farther)
         """
-        if not hand_landmarks or len(hand_landmarks) < 21:
-            return False, 0.0
+        if not hand_landmarks or not face_bbox:
+            return 999.0
         
-        if not face_bbox:
-            return False, 0.0
-        
-        # Get face center and dimensions
+        # Get face dimensions
         face_x1, face_y1, face_x2, face_y2 = face_bbox
-        face_center_x = (face_x1 + face_x2) / 2
-        face_center_y = (face_y1 + face_y2) / 2
         face_width = face_x2 - face_x1
         face_height = face_y2 - face_y1
         
-        # Get hand center (average of all landmarks)
-        hand_x = np.mean([p[0] for p in hand_landmarks])
-        hand_y = np.mean([p[1] for p in hand_landmarks])
-        
-        # Calculate distance from hand to face center
-        dist_to_face = distance.euclidean(
-            (hand_x, hand_y),
-            (face_center_x, face_center_y)
-        )
+        # Find closest point on hand to face
+        min_dist = 999999
+        for landmark in hand_landmarks:
+            x, y = landmark
+            
+            # Distance to face edges
+            dist_to_left = abs(x - face_x1)
+            dist_to_right = abs(x - face_x2)
+            dist_to_top = abs(y - face_y1)
+            dist_to_bottom = abs(y - face_y2)
+            
+            # Minimum distance to any face edge
+            dist = min(dist_to_left, dist_to_right, dist_to_top, dist_to_bottom)
+            
+            if dist < min_dist:
+                min_dist = dist
         
         # Normalize by face size
         face_size = max(face_width, face_height)
-        distance_ratio = dist_to_face / face_size if face_size > 0 else 999
+        distance_ratio = min_dist / face_size if face_size > 0 else 999.0
         
-        # CRITICAL FIX: More lenient threshold
-        # Hand is "near face" if within 2.0x face size (increased from 1.5x)
-        is_near = distance_ratio < 2.0
-        
-        return is_near, distance_ratio
-    
-    def is_hand_elevated(self, hand_landmarks, face_bbox):
+        return distance_ratio
+
+    def is_hand_at_ear_position(self, hand_landmarks, face_bbox):
         """
-        Check if hand is elevated (above chest level, near face height).
+        Check if hand is at typical phone-to-ear position.
         
         Args:
-            hand_landmarks (list): Hand landmark coordinates
-            face_bbox (tuple): Face bounding box (x1, y1, x2, y2)
+            hand_landmarks (list): Hand landmarks
+            face_bbox (tuple): Face bounding box
         
         Returns:
-            bool: True if hand is elevated
+            bool: True if hand is at ear position
         """
         if not hand_landmarks or not face_bbox:
             return False
         
-        # Get wrist position (base of hand)
-        wrist_y = hand_landmarks[self.WRIST][1]
+        face_x1, face_y1, face_x2, face_y2 = face_bbox
+        face_center_y = (face_y1 + face_y2) / 2
         
-        # Get face bottom
-        face_bottom = face_bbox[3]
+        # Get hand center
+        hand_x = np.mean([p[0] for p in hand_landmarks])
+        hand_y = np.mean([p[1] for p in hand_landmarks])
         
-        # Hand is elevated if wrist is at or above face bottom
-        # CRITICAL FIX: More lenient - allow hand slightly below face
-        tolerance = (face_bbox[3] - face_bbox[1]) * 0.5  # 50% of face height
+        # Check if hand is at ear level (same height as face center)
+        # Allow ±30% of face height tolerance
+        vertical_tolerance = (face_y2 - face_y1) * 0.3
+        is_at_ear_height = abs(hand_y - face_center_y) < vertical_tolerance
         
-        return wrist_y < (face_bottom + tolerance)
-    
-    def is_vertical_orientation(self, hand_landmarks):
-        """
-        Check if hand is in vertical orientation (typical phone holding).
+        # Check if hand is beside face (not in front)
+        is_beside_face = (hand_x < face_x1) or (hand_x > face_x2)
         
-        Args:
-            hand_landmarks (list): Hand landmark coordinates
-        
-        Returns:
-            bool: True if hand appears vertical
-        """
-        if not hand_landmarks or len(hand_landmarks) < 21:
-            return False
-        
-        try:
-            wrist = hand_landmarks[self.WRIST]
-            middle_tip = hand_landmarks[self.MIDDLE_TIP]
-            
-            # Calculate vertical distance vs horizontal distance
-            vertical_dist = abs(middle_tip[1] - wrist[1])
-            horizontal_dist = abs(middle_tip[0] - wrist[0])
-            
-            # Hand is vertical if vertical distance > horizontal distance
-            # CRITICAL FIX: More lenient ratio
-            return vertical_dist > horizontal_dist * 0.6
-            
-        except:
-            return False
-    
+        return is_at_ear_height and is_beside_face
+
     def detect_phone_usage(self, hands_detected, hand_landmarks_list, face_landmarks, face_bbox, frame_shape=None):
         """
         Main phone detection function.
-        
-        Args:
-            hands_detected (int): Number of hands detected
-            hand_landmarks_list (list): List of hand landmarks for each hand
-            face_landmarks (list): Face landmarks
-            face_bbox (tuple): Face bounding box
-            frame_shape (tuple): Frame dimensions
-        
-        Returns:
-            dict: Detection results
         """
         phone_usage_detected = False
         confidence = 0.0
         detection_reasons = []
         
-        # No hands detected = no phone usage
+        # No hands detected = reset session
         if hands_detected == 0 or not hand_landmarks_list:
-            # Decrease counter
-            if self.phone_detection_counter > 0:
-                self.phone_detection_counter = 0
-            
-            if self.current_phone_duration > 0:
-                self.current_phone_duration = 0
-            
+            self.phone_detection_counter = 0
+            self.current_phone_duration = 0
             self.phone_detected = False
             return self._get_result(False, 0.0, [], face_landmarks)
         
-        # Check each detected hand
+        best_confidence = 0.0
+        
         for hand_landmarks in hand_landmarks_list:
             if not hand_landmarks:
                 continue
             
-            # CRITICAL CHECK 1: Hand near face (50% confidence)
-            is_near, dist_ratio = self.is_hand_near_face(hand_landmarks, face_bbox, frame_shape)
-            if is_near:
-                confidence += 0.5
-                detection_reasons.append(f"Hand near face (dist: {dist_ratio:.2f})")
+            hand_confidence = 0.0
             
-            # CRITICAL CHECK 2: Hand elevated (30% confidence)
-            is_elevated = self.is_hand_elevated(hand_landmarks, face_bbox)
-            if is_elevated:
-                confidence += 0.3
-                detection_reasons.append("Hand elevated")
+            # CRITICAL CHECK 1: Hand proximity to face
+            distance_ratio = self.calculate_hand_to_face_distance(hand_landmarks, face_bbox)
             
-            # CRITICAL CHECK 3: Vertical orientation (20% confidence)
-            is_vertical = self.is_vertical_orientation(hand_landmarks)
-            if is_vertical:
-                confidence += 0.2
-                detection_reasons.append("Vertical orientation")
+            if distance_ratio < 0.3:
+                hand_confidence += 0.6
+                detection_reasons.append(f"Hand very close (dist: {distance_ratio:.2f})")
+            
+            # CRITICAL CHECK 2: Vertical alignment with ear
+            if self.is_hand_at_ear_position(hand_landmarks, face_bbox):
+                hand_confidence += 0.4
+                detection_reasons.append("Hand at ear position")
+            
+            if hand_confidence > best_confidence:
+                best_confidence = hand_confidence
         
-        # CRITICAL FIX: Lower threshold for detection
-        # Changed from 0.6 to 0.4 for easier detection
+        confidence = best_confidence
+        
+        # Determine if phone usage is detected based on threshold
         if confidence >= Config.PHONE_DETECTION_THRESHOLD:
             self.phone_detection_counter += 1
             
-            # CRITICAL: Confirmed phone usage after consecutive frames
-            # This implements the 2-3 second delay you requested
+            # Confirmed phone usage after consecutive frames
             if self.phone_detection_counter >= Config.PHONE_CONSEC_FRAMES:
                 phone_usage_detected = True
                 self.phone_detected = True
@@ -204,18 +165,19 @@ class PhoneDetector:
                 if self.current_phone_duration > self.longest_phone_duration:
                     self.longest_phone_duration = self.current_phone_duration
         else:
-            # Reset if not detected
+            # Reset if not detected, but log if a session just ended
             if self.phone_detection_counter >= Config.PHONE_CONSEC_FRAMES:
-                # Phone usage session ended - INCREMENT COUNTER
                 self.total_phone_detections += 1
-                log.warning(f"Phone usage detected! Total uses: {self.total_phone_detections}, Duration: {self.current_phone_duration} frames ({self.current_phone_duration/30:.1f} seconds)")
+                duration_seconds = self.current_phone_duration / 30.0  # assuming ~30 fps
+                log.warning(f"Phone usage ended! Total uses: {self.total_phone_detections}, "
+                            f"Duration: {duration_seconds:.1f} seconds")
             
             self.phone_detection_counter = 0
             self.phone_detected = False
             self.current_phone_duration = 0
         
         return self._get_result(phone_usage_detected, confidence, detection_reasons, face_landmarks)
-    
+
     def _get_result(self, detected, confidence, reasons, face_landmarks):
         """Format detection result."""
         return {
@@ -226,16 +188,16 @@ class PhoneDetector:
             'total_phone_detections': self.total_phone_detections,
             'current_duration': self.current_phone_duration,
             'longest_duration': self.longest_phone_duration,
+            'phone_bbox': None,  # Always None now
             'head_tilted': False,
             'tilt_angle': 0.0
         }
-    
+
     def reset(self):
-        """Reset phone detector."""
+        """Full reset of the detector."""
         self.phone_detected = False
         self.phone_detection_counter = 0
         self.total_phone_detections = 0
         self.current_phone_duration = 0
         self.longest_phone_duration = 0
-        self.last_detection_time = 0
         log.info("Phone detector reset")
